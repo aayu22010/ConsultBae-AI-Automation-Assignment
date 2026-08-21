@@ -1,5 +1,56 @@
 # ConsultBae — Final Walkthrough
 
+## Quick Start Guide
+
+**1. Clone the repository**
+```bash
+git clone https://github.com/aayu22010/ConsultBae-AI-Automation-Assignment.git
+cd ConsultBae-AI-Automation-Assignment
+
+```
+
+**2. Set up a virtual environment**
+
+```bash
+python -m venv venv
+
+# For Windows:
+.\venv\Scripts\Activate.ps1
+# For Mac/Linux:
+source venv/bin/activate
+
+```
+
+**3. Install dependencies**
+
+```bash
+pip install -r requirements.txt
+
+```
+
+*(Note: No API keys are required locally, as the LLM automation triggers via a Make.com webhook).*
+
+**4. Run the pipeline and app**
+Execute the following commands in order to test the end-to-end flow:
+
+```bash
+# Step 1: Run the merge pipeline to build consultbae.db
+python merge_sources.py
+
+# Step 2: (Optional) Validate the database creation
+python check_db.py
+
+# Step 3: Run the LLM auto-tagging automation
+python auto_tag.py
+
+# Step 4: Start the Flask audio app
+python app.py
+
+```
+
+After starting `app.py`, open **http://127.0.0.1:5000** in your browser to test the audio collection interface.
+
+
 ## Overview
 
 | Task | Status | Description |
