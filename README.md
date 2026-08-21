@@ -269,3 +269,32 @@ python merge_sources.py
 python app.py
 # Open http://127.0.0.1:5000
 ```
+## Stuck Log
+
+**1. Audio Feature Extraction Without FFmpeg**
+*   **The Problem:** I needed to extract duration, bitrate, loudness, and a noise estimate from audio files, but standard libraries like `pydub` or `librosa` require heavy external dependencies (like FFmpeg) which complicates deployment.
+*   **The AI Prompt:** "How to extract audio duration, sample rate, loudness in dBFS, and estimate noise in Python using only the standard library or lightweight packages without FFmpeg?"
+*   **The Solution:** I utilized Python's built-in `wave` module to read raw frames and `numpy` to calculate the Root Mean Square (RMS) for dBFS loudness. For noise estimation, I implemented a spectral flatness algorithm (geometric mean divided by arithmetic mean of the power spectrum). 
+*   **Rejected Suggestion:** AI suggested using `librosa.feature.spectral_flatness`. I rejected this because `librosa` is a massive dependency that significantly slows down deployment and often causes version conflicts in lightweight web apps.
+
+**2. Cross-Source Deduplication Without Unique IDs**
+*   **The Problem:** The three CSV files contained overlapping candidates but no universal ID, meaning standard SQL `JOIN` or Pandas `merge` operations would fail or create duplicates.
+*   **The AI Prompt:** "Write a Python deduplication logic for 3 CSV files where people might share an email, a phone number, or just a name and city, ensuring the richest data is kept."
+*   **The Solution:** I built a 3-tier fallback strategy using dictionary indexing. The script checks for email matches first, falls back to phone numbers, and finally uses a normalized "name + city" string. I added custom heuristic checks to upgrade abbreviated names (e.g., `R. Verma` to `Rohit Verma`) and prefer non-alt emails. 
+*   **Rejected Suggestion:** AI suggested a Pandas `outer merge` with `fillna()`. I rejected this because it is too rigid; it cannot intelligently handle transitive matching (e.g., Source A matches Source B by email, and Source B matches Source C by phone).
+
+---
+
+## Task 5 — App Scaling & Bottleneck Analysis
+
+Launching this audio collection app to 5,000 gig workers over a single weekend requires shifting from a local Flask/SQLite architecture to a production-ready cloud environment[cite: 2, 5].
+
+### Architecture Bottlenecks
+*   **Storage Constraints:** 5,000 workers submitting 5MB audio files equals 25GB of data. Storing these locally in an `uploads/` directory will quickly max out standard server disk space and cause the app to crash.
+*   **System Failures:** The current architecture processes audio synchronously[cite: 5]. If 500 workers submit audio simultaneously, the CPU-heavy `numpy` FFT calculations will block the Flask server, causing gateway timeouts.
+*   **Database Locks:** SQLite handles concurrent reads well but locks the entire database during writes. 5,000 weekend writes will lead to `database is locked` errors.
+
+### Required Infrastructure Upgrades
+*   **Upload Handling:** I would implement pre-signed URLs to upload audio files directly from the browser to an AWS S3 bucket. This bypasses the Flask server entirely, preventing bandwidth bottlenecks.
+*   **Asynchronous Processing:** I would move the `audio_analyzer.py` logic into a background worker queue (using Celery + Redis). The web app would instantly return a "Success" message to the gig worker, while the server processes the spectral flatness and dBFS calculations in the background. 
+*   **Duplicates & Cost:** To prevent workers from spamming submissions, I would implement frontend button-disabling upon click, and backend rate-limiting per phone number. For cost, utilizing S3 for storage and serverless functions (like AWS Lambda) for the audio processing ensures we only pay for the exact compute time used during the weekend spike.
